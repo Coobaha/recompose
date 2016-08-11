@@ -19,7 +19,12 @@ const mapValues = (obj, func) => {
 const withHandlers = handlers => BaseComponent => {
   const factory = createEagerFactory(BaseComponent)
   return class extends Component {
-    cachedHandlers = {};
+
+    constructor(props, ctx) {
+      super(props, ctx);
+      this.propsProxy = { props };
+      this.cachedHandlers = {};
+    }
 
     handlers = mapValues(
       handlers,
@@ -29,7 +34,7 @@ const withHandlers = handlers => BaseComponent => {
           return cachedHandler(...args)
         }
 
-        const handler = createHandler(this.props)
+        const handler = createHandler(this.propsProxy)
         this.cachedHandlers[handlerName] = handler
 
         if (
@@ -46,8 +51,8 @@ const withHandlers = handlers => BaseComponent => {
       }
     );
 
-    componentWillReceiveProps() {
-      this.cachedHandlers = {}
+    componentWillReceiveProps(nextProps) {
+      this.propsProxy.props = nextProps;
     }
 
     render() {

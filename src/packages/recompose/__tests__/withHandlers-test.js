@@ -9,11 +9,11 @@ test('withHandlers passes handlers to base component', t => {
   const enhanceForm = compose(
     withState('value', 'updateValue', ''),
     withHandlers({
-      onChange: props => event => {
-        props.updateValue(event.target.value)
+      onChange: proxy => event => {
+        proxy.props.updateValue(event.target.value)
       },
-      onSubmit: props => () => {
-        submittedFormValue = props.value
+      onSubmit: proxy => () => {
+        submittedFormValue = proxy.props.value
       }
     })
   )
@@ -62,10 +62,10 @@ test('withHandlers caches handlers properly', t => {
   const handlerCallSpy = sinon.spy()
 
   const enhance = withHandlers({
-    handler: props => {
-      handlerCreationSpy(props)
+    handler: proxy => {
+      handlerCreationSpy(proxy)
       return val => {
-        handlerCallSpy(val)
+        handlerCallSpy(val, proxy.props.foo)
       }
     }
   })
@@ -81,23 +81,23 @@ test('withHandlers caches handlers properly', t => {
 
   handler(1)
   t.is(handlerCreationSpy.callCount, 1)
-  t.deepEqual(handlerCreationSpy.args[0], [{ foo: 'bar' }])
+  t.deepEqual(handlerCreationSpy.args[0], [wrapper.node.propsProxy])
   t.is(handlerCallSpy.callCount, 1)
-  t.deepEqual(handlerCallSpy.args[0], [1])
+  t.deepEqual(handlerCallSpy.args[0], [1, 'bar'])
 
   // Props haven't changed; should use cached handler
   handler(2)
   t.is(handlerCreationSpy.callCount, 1)
   t.is(handlerCallSpy.callCount, 2)
-  t.deepEqual(handlerCallSpy.args[1], [2])
+  t.deepEqual(handlerCallSpy.args[1], [2, 'bar'])
 
   wrapper.setProps({ foo: 'baz' })
   handler(3)
-  // Props did change; handler should be recreated
-  t.is(handlerCreationSpy.callCount, 2)
-  t.deepEqual(handlerCreationSpy.args[1], [{ foo: 'baz' }])
+  // Props did change; handler should not be recreated
+  t.is(handlerCreationSpy.callCount, 1)
+  t.deepEqual(handlerCreationSpy.args[0], [wrapper.node.propsProxy])
   t.is(handlerCallSpy.callCount, 3)
-  t.deepEqual(handlerCallSpy.args[2], [3])
+  t.deepEqual(handlerCallSpy.args[2], [3, 'baz'])
 })
 
 test.serial('withHandlers warns if handler is not a higher-order function', t => {
